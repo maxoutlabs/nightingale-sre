@@ -59,7 +59,7 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
-# Internal dev / hackathon notes (not for submission)
+# Internal dev notes (not for submission)
 DEMO_SCRIPT.md
 DEMO_VIDEO_GUIDE.md
 SUBMISSION_CHECKLIST.md
@@ -68,6 +68,18 @@ info.txt
 PROJECT_OVERVIEW.md
 OPERANCE.md
 OMNINPC.md
+ARCHITECTURE_DIAGRAM.md
+SAFETY.md
+TELEMETRY.md
+
+# Loose screenshots (tracked under screenshots/)
+banner.png
+terminal_1.png
+terminal_2.png
+terminal_3.png
+dashboard_1.png
+dashboard_2.png
+logo.png
 
 # Agent skills and local tooling
 .agents/

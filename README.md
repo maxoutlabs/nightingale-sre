@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="banner.png" width="100%" alt="Nightingale SRE" />
+  <img src="screenshots/banner.png" width="100%" alt="Nightingale SRE" />
 
   # 🐦 Nightingale SRE
 
@@ -109,7 +109,7 @@ confidence =
 
 Below 85%, nothing is written. The fix plan and the full incident report are generated anyway and sent to the engineer, so even escalations are useful.
 
-![Nightingale resolving a CI failure autonomously](terminal_2.png)
+![Nightingale resolving a CI failure autonomously](screenshots/terminal_2.png)
 
 *Confidence breakdown printed inline during resolution. The decision, the score, and the reasoning are all visible. No black box.*
 
@@ -122,11 +122,11 @@ python main.py --server
 # open http://localhost:8000
 ```
 
-![Nightingale live incident feed](dashboard_1.png)
+![Nightingale live incident feed](screenshots/dashboard_1.png)
 
 *Live incident feed. The amber row is actively being diagnosed in real time. Green rows are resolved. All incidents, confidence scores, and resolution times persist in SQLite and survive restarts.*
 
-![Nightingale incident detail](dashboard_2.png)
+![Nightingale incident detail](screenshots/dashboard_2.png)
 
 *Incident detail view. Root cause from GPT-4o, the pipeline trace, per-factor confidence breakdown, and the full pytest verification log. Everything that went into the decision is visible.*
 
