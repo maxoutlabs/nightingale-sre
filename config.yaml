@@ -1,0 +1,66 @@
+project_name: "Nightingale"
+version: "1.0.0"
+sandbox_dir: ".sandbox"
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "nightingale.log"
+
+# ── AI Models ──────────────────────────────────────────────────────────────────
+openai:
+  model: "gpt-4o"              # Main reasoning & fix generation (structured outputs)
+  mini_model: "gpt-4o-mini"    # Cheap classification (risk assessment)
+  rate_limit: 60               # Max requests per minute
+  max_retries: 3
+  backoff_factor: 2.0
+
+agents:
+  marathon:
+    model: "gpt-4o"
+    timeout: 300
+    max_attempts: 3
+  verifier:
+    model: "gpt-4o-mini"
+    timeout: 60
+
+# ── Confidence & Decision ──────────────────────────────────────────────────────
+confidence:
+  resolve_threshold: 0.85      # Above this → auto-resolve
+  weights:
+    test_pass_ratio: 0.35
+    inverse_blast_radius: 0.25
+    attempt_penalty: 0.15
+    risk_modifier: 0.15
+    self_consistency: 0.10
+
+# ── GitHub Integration ─────────────────────────────────────────────────────────
+github:
+  token: ""                    # GitHub personal access token (repo scope)
+                               # Or set GITHUB_TOKEN env var
+  repo: ""                     # "owner/repo" — e.g. "aadi-joshi/nightingale-sre"
+                               # Or set GITHUB_REPO env var
+  auto_pr: true                # Create PR on auto-resolve (vs direct write)
+
+# ── Slack Notifications ────────────────────────────────────────────────────────
+slack:
+  webhook_url: ""              # Slack incoming webhook URL
+                               # Or set SLACK_WEBHOOK_URL env var
+  enabled: false               # Set true + provide webhook_url to enable
+
+# ── Webhook Server ─────────────────────────────────────────────────────────────
+webhook:
+  host: "0.0.0.0"
+  port: 8000
+  secret: ""                   # GitHub webhook secret (optional)
+
+# ── Dashboard ──────────────────────────────────────────────────────────────────
+dashboard:
+  enabled: true
+  db_path: "nightingale.db"    # SQLite database path
+
+# ── Demo ──────────────────────────────────────────────────────────────────────
+demo:
+  repo_path: "."               # Path to the repository used in demo
+
+cleanup_sandbox: true

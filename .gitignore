@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv
+env.bak/
+venv.bak/
+
+# Environment & secrets (NEVER commit these)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Nightingale Runtime Artifacts
+.sandbox/
+.nightingale_cache/
+nightingale.log
+nightingale.db
+*.log
+
+# Python testing
+.pytest_cache/
+.coverage
+htmlcov/
+junit/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Internal dev / hackathon notes (not for submission)
+DEMO_SCRIPT.md
+DEMO_VIDEO_GUIDE.md
+SUBMISSION_CHECKLIST.md
+demo_setup.sh
+info.txt
+PROJECT_OVERVIEW.md
