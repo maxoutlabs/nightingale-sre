@@ -1,407 +1,294 @@
-# 🐦 Nightingale SRE
+<div align="center">
+  <img src="banner.png" width="100%" alt="Nightingale SRE" />
 
-> **Autonomous CI/CD Repair Agent** — detects, diagnoses, and fixes pipeline failures with zero human intervention.
+  # 🐦 Nightingale SRE
 
-![Nightingale Banner](banner.png)
+  **CI failures, diagnosed and fixed autonomously. No pager. No context switch. No one woken up at 3am.**
 
-
-
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![GPT-4o](https://img.shields.io/badge/Powered%20by-GPT--4o-green)](https://openai.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![FastAPI](https://img.shields.io/badge/Dashboard-FastAPI-009688)](https://fastapi.tiangolo.com)
-
----
-
-## What is Nightingale?
-
-When your CI pipeline breaks at 3 AM, Nightingale wakes up so you don't have to.
-
-It autonomously:
-1. **Detects** the failure (GitHub webhook or manual trigger)
-2. **Analyzes** root causes using GPT-4o with structured outputs
-3. **Generates** a minimal, targeted fix (reflective loop — up to 3 attempts)
-4. **Verifies** the fix in an isolated sandbox (never touches production)
-5. **Decides** to auto-resolve or escalate based on a 5-factor confidence score
-6. **Applies** the fix via a GitHub Pull Request (or direct write as fallback)
-7. **Notifies** your team on Slack
-
-All with a live web dashboard to monitor everything in real time.
+  [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg?style=flat-square)](https://www.python.org/downloads/)
+  [![OpenAI GPT-4o](https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=flat-square)](https://openai.com)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+  [![FastAPI](https://img.shields.io/badge/dashboard-FastAPI-009688?style=flat-square)](https://fastapi.tiangolo.com)
+</div>
 
 ---
 
-## ⚡ Quick Start
+## The problem
 
-```bash
-# 1. Clone & install
-git clone https://github.com/aadi-joshi/nightingale-sre.git
-cd nightingale-sre
-pip install -r requirements.txt
+Most CI failures are not interesting. A wrong expected value in an assertion. A class name imported with the wrong casing. An off-by-one that only shows up in tests. These take a senior engineer two minutes to fix and cost an hour of their day once you account for the notification, the context switch, the branch, the review, and the re-run.
 
-# 2. Set your OpenAI API key
-export OPENAI_API_KEY='sk-...'          # Linux/macOS
-$env:OPENAI_API_KEY = 'sk-...'          # PowerShell
-
-# 3. Run the interactive demo
-python main.py --demo
-
-# 4. Or start the server + dashboard
-python main.py --server
-# → Dashboard: http://localhost:8000/
-```
+That math gets painful fast on any team shipping at speed. Nightingale handles the two-minute fixes so engineers only see the failures that actually need them.
 
 ---
 
-## Demo Scenarios
+## What Nightingale does
 
-Nightingale ships with **three self-contained demo scenarios** — each is a real Python test file with a deliberate bug. No mocked data.
+A test fails on CI. GitHub sends a webhook. Nightingale receives the event, loads the failure logs and the relevant files, and calls GPT-4o with structured outputs to produce a typed fix plan: root cause, rationale, and the exact file edits needed.
 
-| # | Scenario | Bug | File |
-|---|----------|-----|------|
-| 1 | **Test Assertion Bug** | `assert subtract(2,2) == 1` (should be `== 0`) | `demo_repo/test_app.py` |
-| 2 | **Broken Import** | `from collections import DefaultDict` (should be `defaultdict`) | `demo_repo/test_formatter.py` |
-| 3 | **Logic Bug** | `return a` instead of `return b` in Fibonacci | `demo_repo/test_fibonacci.py` |
+It copies the repository into a temporary sandbox, applies the changes, and runs the full test suite. If everything passes, it scores the fix across five weighted factors. Above 85% confidence, it creates a branch, commits the fix, and opens a pull request with the root cause analysis and confidence breakdown in the description. Below 85%, it escalates to a human with a full incident report and leaves the codebase untouched.
 
-```bash
-python main.py --demo              # Interactive picker (run 1, 2, 3, or all)
-python main.py --scenario 1        # Run scenario 1 directly
-python main.py --scenario 2        # Run scenario 2 directly
-python main.py --scenario 3        # Run scenario 3 directly
-```
-
-Each scenario:
-- Feeds real CI failure logs to GPT-4o
-- Runs the actual broken tests in an isolated sandbox
-- Generates and verifies a fix
-- Reports full confidence breakdown
+The whole loop takes under 10 seconds for most failures.
 
 ---
 
-## Architecture
+## The production workflow
 
 ```
-GitHub Webhook / Demo Trigger
-        │
-        ▼
-   ┌─────────────┐
-   │  Orchestrator│  ←── coordinates the whole pipeline
-   └──────┬──────┘
-          │
-     ┌────┴────┐
-     │ Context │  reads git history, file tree, failing file content
-     └────┬────┘
-          │
-   ┌──────┴────────────────────┐
-   │   ReflectiveReasoningLoop  │  up to 3 attempts
-   │  ┌────────────────────┐   │
-   │  │   MarathonAgent    │   │  GPT-4o structured outputs
-   │  │   (fix generation) │   │
-   │  └────────┬───────────┘   │
-   │           │ FixPlan        │
-   │  ┌────────┴───────────┐   │
-   │  │  VerificationAgent │   │  runs tests in isolated sandbox
-   │  └────────────────────┘   │
-   │     if fails → reflect     │
-   └────────────────────────────┘
-          │ success
-   ┌──────┴────────────┐
-   │  ConfidenceScorer  │  5-factor weighted formula
-   │  + gpt-4o-mini     │  risk classification
-   └──────┬────────────┘
-          │
-   ┌──────┴──────────┐
-   │ ResolutionEngine │  resolve or escalate
-   └──────┬──────────┘
-          │
-     ┌────┴──────────────────┐
-     │  GitHub PR  │  Slack  │
-     │  + SQLite DB           │
-     └───────────────────────┘
+Developer pushes a commit
+        |
+   GitHub Actions runs tests
+        |
+   Tests fail
+        |
+   GitHub fires webhook --> Nightingale server (POST /webhook/github)
+        |
+   Nightingale loads failure logs + repo context
+        |
+   GPT-4o generates a FixPlan (structured output, typed schema)
+        |
+   Sandbox: copy repo, apply fix, run pytest
+        |
+   Confidence score computed (5-factor formula)
+        |
+   >= 85%: open GitHub PR with fix, root cause, diff
+   < 85%:  escalate with full incident report + Slack alert
+        |
+   Dashboard logs the incident, metrics update live
 ```
 
-### Key Components
+The PR goes through your normal review and merge process. Nightingale does not merge anything. It proposes the fix; a human approves it. If the confidence threshold makes you uncomfortable, lower it to 0.90 and it will only auto-propose fixes it is very sure about.
+
+To use this in production, you run Nightingale as a persistent server on a machine that has access to your repository, add the webhook in GitHub settings, and set your `GITHUB_TOKEN`. That is the full setup.
+
+---
+
+## Under the hood
+
+```
+   Orchestrator                coordinates the full pipeline
+        |
+   Context Loader              reads git history, file tree, failing file content
+        |
+   ReflectiveReasoningLoop     up to 3 GPT-4o attempts
+   |-- MarathonAgent            structured outputs -> FixPlan (typed Pydantic schema)
+   |-- VerificationAgent        runs pytest in isolated sandbox
+   |-- on failure: logs fed back into next prompt, reattempts with revised context
+        |
+   ConfidenceScorer             5-factor weighted formula
+   + gpt-4o-mini                independent risk classification on changed files
+        |
+   ResolutionEngine             auto-resolve (>= 85%) or escalate
+        |
+   GitHub PR + Slack + SQLite incident log
+```
 
 | Component | File | Role |
-|-----------|------|------|
-| `MarathonAgent` | `nightingale/agents/marathon.py` | GPT-4o fix generation with reflection |
-| `VerificationAgent` | `nightingale/agents/verifier.py` | Sandbox test runner |
-| `Orchestrator` | `nightingale/core/orchestrator.py` | Full pipeline controller |
-| `OpenAIClient` | `nightingale/core/openai_client.py` | GPT-4o + GPT-4o-mini API wrapper |
-| `ConfidenceScorer` | `nightingale/analysis/confidence.py` | 5-factor weighted scoring |
-| `GitHubPRCreator` | `nightingale/core/github_pr.py` | Automated PR creation |
-| `SlackNotifier` | `nightingale/core/slack_notifier.py` | Slack notifications |
-| `IncidentDatabase` | `nightingale/core/database.py` | SQLite persistence |
-| `Sandbox` | `nightingale/core/sandbox.py` | Isolated test environment |
-| Dashboard | `nightingale/static/index.html` | Live web UI |
+|---|---|---|
+| MarathonAgent | `nightingale/agents/marathon.py` | GPT-4o fix generation with reflective loop |
+| VerificationAgent | `nightingale/agents/verifier.py` | Sandbox test runner |
+| Orchestrator | `nightingale/core/orchestrator.py` | Full pipeline controller |
+| ConfidenceScorer | `nightingale/analysis/confidence.py` | 5-factor weighted scoring |
+| Sandbox | `nightingale/core/sandbox.py` | Isolated environment, SHA-256 integrity check |
+| GitHubPRCreator | `nightingale/core/github_pr.py` | Branch, commit, PR via GitHub REST API |
+| IncidentDatabase | `nightingale/core/database.py` | SQLite incident log |
 
 ---
 
-## Confidence Scoring
+## Confidence scoring
 
-Every auto-fix decision is backed by a transparent, auditable confidence formula:
+Every resolution decision has a number attached to it. The formula is transparent and every factor is logged:
 
 ```
 confidence =
-    35% × test_pass_ratio        (did ALL tests pass?)
-  + 25% × inverse_blast_radius   (minimal files changed = safer)
-  + 15% × attempt_penalty        (first-try fix = higher confidence)
-  + 15% × risk_modifier          (gpt-4o-mini risk classification)
-  + 10% × self_consistency       (model's own stated confidence)
+    35% x test_pass_ratio         did all tests pass in the sandbox?
+  + 25% x inverse_blast_radius    fewer files changed is a safer fix
+  + 15% x attempt_penalty         first-attempt fixes score higher
+  + 15% x risk_modifier           gpt-4o-mini independently rates file risk
+  + 10% x self_consistency        model's stated confidence in its own fix
 ```
 
-**Threshold: 85%** — above this, Nightingale auto-resolves. Below, it escalates to a human with a full incident report.
+Below 85%, nothing is written. The fix plan and the full incident report are generated anyway and sent to the engineer, so even escalations are useful.
+
+![Nightingale resolving a CI failure autonomously](terminal_2.png)
+
+*Confidence breakdown printed inline during resolution. The decision, the score, and the reasoning are all visible. No black box.*
 
 ---
 
-## Configuration
-
-All configuration lives in `config.yaml`. Secrets should be set via environment variables (never committed).
-
-### `config.yaml`
-
-```yaml
-openai:
-  model: "gpt-4o"           # Main reasoning model
-  mini_model: "gpt-4o-mini" # Cheap risk classification
-
-confidence:
-  resolve_threshold: 0.85   # 0.0-1.0 — lower = auto-resolve more aggressively
-
-github:
-  token: ""                 # Or GITHUB_TOKEN env var
-  repo: "owner/repo"        # Or GITHUB_REPO env var
-
-slack:
-  webhook_url: ""           # Or SLACK_WEBHOOK_URL env var
-```
-
-### Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `OPENAI_API_KEY` | ✅ | OpenAI API key (`sk-proj-...`) |
-| `GITHUB_TOKEN` | ⬜ | GitHub personal access token (repo scope) — enables PR creation |
-| `GITHUB_REPO` | ⬜ | Repository in `owner/repo` format |
-| `SLACK_WEBHOOK_URL` | ⬜ | Slack incoming webhook URL — enables notifications |
-
-### Setting env vars
-
-```bash
-# Linux/macOS
-export OPENAI_API_KEY='sk-proj-...'
-export GITHUB_TOKEN='ghp_...'
-export GITHUB_REPO='myorg/myrepo'
-export SLACK_WEBHOOK_URL='https://hooks.slack.com/services/...'
-
-# PowerShell
-$env:OPENAI_API_KEY = 'sk-proj-...'
-$env:GITHUB_TOKEN = 'ghp_...'
-$env:GITHUB_REPO = 'myorg/myrepo'
-$env:SLACK_WEBHOOK_URL = 'https://hooks.slack.com/services/...'
-```
-
----
-
-## Web Dashboard
-
-Start the server and open `http://localhost:8000`:
+## Dashboard
 
 ```bash
 python main.py --server
+# open http://localhost:8000
 ```
 
-The dashboard provides:
-- **Live incident feed** with real-time status stages (`Detected → Diagnosing → Fix Generated → Sandboxing → Resolved/Escalated`)
-- **Click any incident** for full detail: root cause, fix diff, confidence breakdown, verification logs
-- **Auto-resolve toggle** — disable autonomous fixing from the UI
-- **Metrics panel** — total incidents, auto-resolved count, avg confidence, avg resolution time
+![Nightingale live incident feed](dashboard_1.png)
 
-### REST API
+*Live incident feed. The amber row is actively being diagnosed in real time. Green rows are resolved. All incidents, confidence scores, and resolution times persist in SQLite and survive restarts.*
 
-All dashboard data is available as a JSON API:
+![Nightingale incident detail](dashboard_2.png)
+
+*Incident detail view. Root cause from GPT-4o, the pipeline trace, per-factor confidence breakdown, and the full pytest verification log. Everything that went into the decision is visible.*
+
+The dashboard polls every 3 seconds. Row updates are diffed in place so there is no page flash. Auto-resolve can be toggled from the UI without restarting the server.
+
+The same data is available as a JSON API:
 
 ```
-GET  /api/v1/incidents           List all incidents
-GET  /api/v1/incidents/{id}      Incident detail + full report
-GET  /api/v1/metrics             Aggregated metrics
-GET  /api/v1/config              Current configuration
-POST /api/v1/config/auto-resolve Toggle auto-resolve {"enabled": true/false}
-GET  /health                     Health check
+GET  /api/v1/incidents           list all incidents
+GET  /api/v1/incidents/{id}      full detail and report
+GET  /api/v1/metrics             aggregated metrics
+POST /api/v1/config/auto-resolve toggle auto-resolve {"enabled": true}
 POST /webhook/github             GitHub webhook receiver
-POST /incident                   Direct incident submission
 GET  /docs                       Swagger UI
 ```
 
 ---
 
-## GitHub Webhook Integration
+## Quick start
 
-Point your GitHub Actions webhook at Nightingale and it will automatically process CI failures:
+```bash
+git clone https://github.com/aadi-joshi/nightingale-sre.git
+cd nightingale-sre
+pip install -r requirements.txt
 
-1. Generate a webhook secret:
+export OPENAI_API_KEY='sk-...'          # Linux/macOS
+$env:OPENAI_API_KEY = 'sk-...'          # PowerShell
+
+python main.py --self-check             # 9-point diagnostic
+python main.py --demo                   # run the scenarios interactively
+python main.py --server                 # start the dashboard
+```
+
+To run a specific scenario directly:
+
+```bash
+python main.py --scenario 1   # wrong assertion
+python main.py --scenario 2   # broken import
+python main.py --scenario 3   # off-by-one logic bug
+```
+
+After a demo run, reset to broken state with `python main.py --restore-demo`.
+
+---
+
+## GitHub webhook setup
+
+1. Run Nightingale on a server with a public URL (or tunnel with ngrok):
    ```bash
-   openssl rand -hex 32
+   python main.py --server --port 8000
    ```
 
-2. Add webhook in GitHub: `Settings → Webhooks → Add webhook`
+2. In your GitHub repo, go to `Settings > Webhooks > Add webhook`:
    - Payload URL: `https://your-server:8000/webhook/github`
    - Content type: `application/json`
-   - Secret: (your generated secret)
-   - Events: `Workflow runs`, `Check runs`
+   - Events: `Workflow runs` and `Check runs`
 
-3. Set the secret in `config.yaml`:
-   ```yaml
-   webhook:
-     secret: "your-webhook-secret"
+3. Set a webhook secret (optional but recommended):
+   ```bash
+   openssl rand -hex 32
+   # add to config.yaml: webhook.secret
    ```
 
----
+4. Set your GitHub token for PR creation:
+   ```bash
+   export GITHUB_TOKEN='ghp_...'
+   export GITHUB_REPO='owner/repo'
+   ```
 
-## GitHub PR Integration
-
-When Nightingale auto-resolves an incident, instead of writing directly to disk, it opens a Pull Request:
-
-```
-[Nightingale] Auto-fix: Wrong expected value in test_subtract assertion
-
-## Root Cause
-The test asserts subtract(2, 2) == 1 but subtract(2, 2) returns 0...
-
-## Confidence Score: 94%
-| Factor              | Score | Weight |
-|---------------------|-------|--------|
-| Test Pass Ratio     | 1.00  | 35%    |
-| Blast Radius        | 0.99  | 25%    |
-...
-```
-
-Configure with `GITHUB_TOKEN` and `GITHUB_REPO` env vars. Falls back to direct file write if not set.
+From that point, every CI failure in the repo triggers the full Nightingale pipeline automatically.
 
 ---
 
-## Slack Notifications
+## Configuration
 
-Set `SLACK_WEBHOOK_URL` to receive notifications for every resolution or escalation:
+All settings in `config.yaml`. Secrets go in environment variables.
 
-**Resolved:**
-```
-✅ Nightingale: CI Failure Auto-Resolved
-Incident: demo-1-20240115-143022
-Repository: myorg/myrepo
-Confidence: 94%
+| Variable | Required | Notes |
+|---|---|---|
+| `OPENAI_API_KEY` | Yes | GPT-4o for fix generation, GPT-4o-mini for risk classification |
+| `GITHUB_TOKEN` | No | Enables PR creation. Without it, writes directly to the local repo. |
+| `GITHUB_REPO` | No | `owner/repo` format |
+| `SLACK_WEBHOOK_URL` | No | Block Kit notifications on resolve and escalate |
 
-Root Cause: Wrong expected value in assert…
-Fix: Changed assert subtract(2, 2) == 1 → == 0
-🔗 View Pull Request
-```
+Key `config.yaml` options:
 
-**Escalated:**
-```
-⚠️ Nightingale: CI Failure Escalated to Human
-Confidence: 62% (below threshold)
-Action Required: Please review manually
+```yaml
+openai:
+  model: "gpt-4o"
+  mini_model: "gpt-4o-mini"
+
+confidence:
+  resolve_threshold: 0.85   # raise to be more conservative
+
+github:
+  token: ""       # or GITHUB_TOKEN env var
+  repo: ""        # or GITHUB_REPO env var
 ```
 
 ---
 
 ## Safety
 
-Nightingale is built with safety as a first-class concern:
+The fix is tested before anything is written. Nightingale copies the repository into a temporary sandbox directory, applies the changes there, and runs the test suite. The original is SHA-256 hashed before and verified after. Any mismatch rejects the result.
 
-1. **Sandbox isolation** — fixes are always tested in a temporary copy of the repo. The original repo is SHA-256 hashed before and after to guarantee zero contamination.
-
-2. **Confidence threshold** — auto-resolve only fires when confidence ≥ 85%. Below that, it escalates with a full report.
-
-3. **Blast radius analysis** — changes to many files, or critical files (auth, database, deploy), are penalized in the confidence score.
-
-4. **GitHub PR** — when configured, fixes go through code review before merging.
-
-5. **Auto-resolve toggle** — can be disabled from the dashboard at any time.
+Auto-resolve only fires above the confidence threshold. Files touching auth, database logic, or deployment config are penalized in the blast radius factor. In GitHub PR mode, a human reviews and merges the fix. The auto-resolve toggle in the dashboard disables autonomous fixing without restarting the server.
 
 ---
 
-## CLI Reference
+## CLI
 
 ```
-python main.py --verify-api          Verify OpenAI API key (one request)
-python main.py --self-check          Run 9-point system diagnostic
-python main.py --demo                Interactive demo scenario picker
-python main.py --scenario 1          Run scenario 1: test assertion bug
-python main.py --scenario 2          Run scenario 2: broken import
-python main.py --scenario 3          Run scenario 3: logic bug
-python main.py --server              Start server + dashboard
-python main.py --server --port 9000  Custom port
-python main.py --demo --record-mode  Replay cached responses (no API calls)
+python main.py --verify-api          verify OpenAI API key
+python main.py --self-check          9-point system diagnostic
+python main.py --demo                interactive scenario picker
+python main.py --scenario 1          scenario 1: wrong assertion
+python main.py --scenario 2          scenario 2: broken import
+python main.py --scenario 3          scenario 3: off-by-one logic bug
+python main.py --server              start server and dashboard
+python main.py --server --port 9000  custom port
+python main.py --restore-demo        reset demo files to broken state
 ```
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
 nightingale-sre/
-├── main.py                          CLI entry point
-├── config.yaml                      Configuration
-├── requirements.txt                 Dependencies
-│
-├── nightingale/
-│   ├── agents/
-│   │   ├── marathon.py              GPT-4o fix generation (reflective loop)
-│   │   └── verifier.py             Sandbox test runner
-│   ├── analysis/
-│   │   ├── blast_radius.py         File change impact analysis
-│   │   ├── confidence.py           5-factor confidence scorer
-│   │   └── reporter.py             Incident report generator
-│   ├── api/
-│   │   └── webhook.py              FastAPI: webhooks + dashboard REST API
-│   ├── core/
-│   │   ├── context.py              Repository context loader (GitPython)
-│   │   ├── database.py             SQLite incident persistence
-│   │   ├── github_pr.py            GitHub PR creator
-│   │   ├── openai_client.py        OpenAI GPT-4o/mini client
-│   │   ├── orchestrator.py         Main pipeline controller
-│   │   ├── sandbox.py              Isolated test environment
-│   │   ├── slack_notifier.py       Slack notifications
-│   │   └── workflow_parser.py      GitHub Actions YAML parser
-│   ├── demo/
-│   │   └── scenario.py             Three demo scenarios
-│   ├── static/
-│   │   └── index.html              Web dashboard (dark theme, live updates)
-│   └── types.py                    Pydantic data models
-│
-└── demo_repo/                       Demo "broken" repository
-    ├── test_app.py                  Scenario 1: wrong assertion
-    ├── test_formatter.py           Scenario 2: broken import
-    ├── test_fibonacci.py           Scenario 3: logic bug
-    └── .github/workflows/test.yml  CI config for demo repo
+  main.py                       CLI entry point
+  config.yaml                   configuration
+
+  nightingale/
+    agents/
+      marathon.py               GPT-4o fix generation, reflective loop
+      verifier.py               sandbox test runner
+    analysis/
+      blast_radius.py           file change impact scoring
+      confidence.py             5-factor confidence formula
+      reporter.py               incident report generator
+    api/
+      webhook.py                FastAPI: REST API, webhook receiver, dashboard
+    core/
+      context.py                repository context loader
+      database.py               SQLite incident persistence
+      github_pr.py              GitHub PR creation via REST API
+      openai_client.py          GPT-4o and GPT-4o-mini client
+      orchestrator.py           full pipeline controller
+      sandbox.py                isolated environment with integrity check
+      slack_notifier.py         Slack Block Kit notifications
+      workflow_parser.py        GitHub Actions YAML parser
+    demo/
+      scenario.py               three self-contained demo scenarios
+    static/
+      index.html                live web dashboard
+
+  demo_repo/
+    test_app.py                 scenario 1: wrong assertion
+    test_formatter.py           scenario 2: broken import
+    test_fibonacci.py           scenario 3: off-by-one logic bug
 ```
 
 ---
 
-## Development
-
-```bash
-# Install dev dependencies
-pip install -r requirements.txt
-
-# Run self-check
-python main.py --self-check
-
-# Run all demo scenarios
-python main.py --demo  # then choose "A" for all
-
-# Watch dashboard during a demo run
-python main.py --server &
-python main.py --demo
-# → open http://localhost:8000
-```
-
----
-
-## License
-
-MIT © 2025 Nightingale SRE Contributors
-
----
-
-*Built for the GPT-4o Hackathon 2025. Nightingale demonstrates autonomous SRE agents: reliable, auditable, and safe by design.*
+MIT license.

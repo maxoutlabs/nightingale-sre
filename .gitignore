@@ -67,3 +67,8 @@ demo_setup.sh
 info.txt
 PROJECT_OVERVIEW.md
 OPERANCE.md
+OMNINPC.md
+
+# Agent skills and local tooling
+.agents/
+skills-lock.json
