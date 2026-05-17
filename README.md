@@ -2,6 +2,10 @@
 
 > **Autonomous CI/CD Repair Agent** — detects, diagnoses, and fixes pipeline failures with zero human intervention.
 
+![Nightingale Banner](banner.png)
+
+
+
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![GPT-4o](https://img.shields.io/badge/Powered%20by-GPT--4o-green)](https://openai.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

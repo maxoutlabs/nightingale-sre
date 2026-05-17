@@ -301,7 +301,7 @@ class Orchestrator:
             status=final_status.value,
             attempts=self.metrics.total_attempts,
             confidence_score=confidence,
-            outcome=decision,
+            outcome="resolved" if decision == "resolve" else "escalated",
             time_to_resolution_ms=self.metrics.total_duration_ms,
             root_cause=(fix_plan_for_db.root_cause or fix_plan_for_db.rationale) if fix_plan_for_db else "",
             fix_summary=(fix_plan_for_db.rationale[:300]) if fix_plan_for_db else "",
