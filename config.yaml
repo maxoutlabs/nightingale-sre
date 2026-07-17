@@ -38,7 +38,7 @@ confidence:
 github:
   token: ""                    # GitHub personal access token (repo scope)
                                # Or set GITHUB_TOKEN env var
-  repo: ""                     # "owner/repo" — e.g. "aadi-joshi/nightingale-sre"
+  repo: ""                     # "owner/repo" — e.g. "maxoutlabs/nightingale-sre"
                                # Or set GITHUB_REPO env var
   auto_pr: true                # Create PR on auto-resolve (vs direct write)
 

@@ -148,7 +148,7 @@ GET  /docs                       Swagger UI
 ## Quick start
 
 ```bash
-git clone https://github.com/aadi-joshi/nightingale-sre.git
+git clone https://github.com/maxoutlabs/nightingale-sre.git
 cd nightingale-sre
 pip install -r requirements.txt
 
